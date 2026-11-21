@@ -1,0 +1,56 @@
+SPECTRALFX - spectre brisé + résonateur sale (VST3)
+===================================================
+
+INSTALLATION DANS CUBASE (Windows)
+
+1. Fermez Cubase.
+2. Copiez le dossier "SpectralFX.vst3" (le dossier entier) dans :
+       C:\Program Files\Common Files\VST3\
+   Windows demandera une autorisation administrateur : acceptez.
+3. Ouvrez Cubase. Le nouveau plugin est détecté au démarrage.
+   S'il n'apparaît pas : Studio > Gestionnaire de plug-ins VST > bouton
+   "Réanalyser tous les plug-ins" (ou relancez Cubase).
+4. Dans une piste audio ou un groupe, ajoutez l'insert "SpectralFX"
+   (fabricant "Ali"). Fonctionne en stéréo et en mono.
+
+LES COMMANDES
+
+SPECTRE (le son est découpé en fréquences, qu'on manipule)
+- Geler : fige le spectre du moment et le tient indéfiniment (drone).
+- Traîne : chaque fréquence s'éteint plus lentement (jusqu'à 12 s).
+- Décalage : ajoute un même nombre de Hz à toutes les fréquences.
+  Les harmoniques ne sont plus alignées : son métallique, de cloche.
+- Étirement : multiplie les fréquences (x0,5 à x2). Au-dessus de 1,
+  le spectre s'écarte ; en dessous, il se resserre.
+- Brisure : éparpille des fréquences au hasard, qui changent sans arrêt.
+- Épure : ne garde que les fréquences les plus fortes (son plus pur, sifflant).
+
+RÉSONATEUR (4 cordes ou tubes virtuels qui « chantent » le son)
+- Note : note de base (Do3 = do du milieu, comme dans Cubase).
+- Accord : Unisson, Octaves, Quinte, Majeur, Mineur, Sus4, Dissonant.
+- Matière : Corde (toutes les harmoniques) ou Tube (harmoniques impaires,
+  son plus creux).
+- Résonance : durée de la résonance, de 0,2 à 20 s.
+- Brillance : sombre (à gauche) ou brillant (à droite).
+- Métal : rend les harmoniques inégales, vers la cloche ou la plaque.
+- Dérive : les résonateurs se désaccordent lentement et s'écartent en stéréo.
+
+SORTIE
+- Saleté : saturation des résonateurs.
+- Résonateur : part du résonateur face au spectre seul.
+- Sec / traité : mélange avec le son d'origine.
+- Volume : volume de sortie.
+
+Double-clic sur un bouton : retour à sa position par défaut.
+Toutes les commandes sont automatisables dans Cubase.
+
+Le plugin ajoute environ 43 ms de latence (2048 échantillons à 44,1 et
+48 kHz), compensée automatiquement par Cubase.
+
+APPLICATION AUTONOME
+
+"SpectralFX.exe" permet d'essayer le plugin sans Cubase.
+
+Si Windows affiche "Windows a protégé votre ordinateur" : cliquez sur
+"Informations complémentaires" puis "Exécuter quand même". Ce message
+apparaît pour tout programme non signé ; il n'indique pas un problème.

@@ -1,0 +1,5 @@
+0 melange=0
+3 melange=0.8 traine=0.5 part=0.6 accord=2 note=40 resonance=4 salete=0.2
+7.5 geler=1 decalage=120 brisure=0.4 metal=0.5 part=0.7
+12 geler=0 decalage=0 brisure=0 tube=1 accord=4 salete=0.75 traine=0.3
+16.5 etirement=1.5 metal=0.85 accord=6 epure=0.7 tube=0 resonance=8 salete=0.5 traine=0.7

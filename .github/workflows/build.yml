@@ -1,0 +1,87 @@
+name: Compilation du plugin
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  # Version figée du compilateur Faust (commit du dépôt grame-cncm/faust)
+  FAUST_COMMIT: e3665b800a549d7a87b05ebb0782f70b5dc785c3
+
+jobs:
+  generer:
+    name: Faust → C++
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cache du compilateur Faust
+        id: cache-faust
+        uses: actions/cache@v6
+        with:
+          path: ~/faust
+          key: faust-${{ env.FAUST_COMMIT }}
+
+      - name: Compilation de Faust (première fois seulement)
+        if: steps.cache-faust.outputs.cache-hit != 'true'
+        run: |
+          git init ~/faust-src
+          cd ~/faust-src
+          git remote add origin https://github.com/grame-cncm/faust.git
+          git fetch --depth 1 origin "$FAUST_COMMIT"
+          git checkout FETCH_HEAD
+          make -j4
+          mkdir -p ~/faust/bin
+          cp build/bin/faust ~/faust/bin/
+          cp -r libraries ~/faust/libraries
+
+      - name: Génération du C++
+        run: scripts/generate.sh ~/faust/bin/faust ~/faust/libraries
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cpp-genere
+          path: generated/
+
+  windows:
+    name: Windows (VST3 + application autonome)
+    needs: generer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpp-genere
+          path: generated
+
+      - name: Configuration
+        run: cmake -B build -A x64 -DCMAKE_BUILD_TYPE=Release
+
+      - name: Compilation
+        run: cmake --build build --config Release --parallel
+
+      - name: Test avec pluginval
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
+          Expand-Archive pluginval.zip -DestinationPath pluginval
+          # pluginval renvoie parfois un code de sortie non nul sous Windows même quand tout passe :
+          # on juge donc sur le journal (SUCCESS, et aucun test en échec).
+          $log = (& ./pluginval/pluginval.exe --strictness-level 7 --validate-in-process --validate "build/SpectralFX_artefacts/Release/VST3/SpectralFX.vst3" 2>&1 | Out-String)
+          Write-Output $log
+          if ($log -notmatch "SUCCESS" -or $log -match "FAILED|!!! Test") { Write-Error "pluginval : échec"; exit 1 }
+          exit 0
+
+      - name: Préparation du paquet
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item -Recurse "build/SpectralFX_artefacts/Release/VST3/SpectralFX.vst3" dist/
+          Copy-Item "build/SpectralFX_artefacts/Release/Standalone/SpectralFX.exe" dist/
+          Copy-Item "INSTALLATION.txt" dist/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: SpectralFX-Windows
+          path: dist/
