@@ -85,6 +85,7 @@ struct SpectreReglages
     float etirement = 1;    // rapport
     float brisure = 0;      // 0..1
     float epure = 0;        // 0..1
+    bool regel = false;     // recapturer le spectre gelé maintenant
 };
 
 class SpectreCanal
@@ -121,6 +122,7 @@ public:
         inRing[(size_t) ringPos] = std::isfinite (x) ? x : 0.0f;
         if (++ringPos == n) ringPos = 0;
         const double y = outQ[(size_t) qPos++];
+        if (s.regel) regelDemande = true;
         if (++hopCount == hop)
         {
             hopCount = 0;
@@ -149,12 +151,13 @@ private:
         fft.transform (cplx.data(), false);
 
         // fondu du gel (0,15 s)
-        if (s.geler && ! etaitGele)
+        if (s.geler && (! etaitGele || s.regel || regelDemande))
         {
             gelMag = lisse;
             gelFreq = freqMem;
         }
         etaitGele = s.geler;
+        regelDemande = false;
         const double pas = hop / (sr * 0.15);
         gel = s.geler ? std::min (1.0, gel + pas) : std::max (0.0, gel - pas);
 
@@ -268,7 +271,7 @@ private:
     std::vector<std::complex<double>> cplx;
     int ringPos = 0, hopCount = 0, qPos = 0;
     double gel = 0;
-    bool etaitGele = false;
+    bool etaitGele = false, regelDemande = false;
     uint32_t rng = 1;
 };
 

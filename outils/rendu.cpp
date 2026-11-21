@@ -85,6 +85,7 @@ int main (int argc, char** argv)
         const double t = (double) pos / sr;
         while (next < evts.size() && evts[next].t <= t) { if (evts[next].t > 0) e.setParam (evts[next].i, evts[next].v); ++next; }
         const int k = (int) std::min<size_t> (bloc, L.size() - pos);
+        e.setTempo (100.0, true, t * 100.0 / 60.0);   // source à 100 BPM
         e.process (&L[pos], &R[pos], k);
         for (int i = 0; i < k; ++i)
             for (float v : { L[pos + i], R[pos + i] })

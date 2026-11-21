@@ -1,0 +1,6 @@
+# 1 : drone qui respire, sinus sur 2 mesures -> décalage + étirement
+0 melange=0.85 traine=0.6 part=0.55 accord=2 note=40 resonance=5 salete=0.25 sync=1 division=5 forme=0 mod_decalage=0.35 mod_etirement=0.3 mod_brisure=0.5
+# 2 : hasard net à la noire -> la note saute (mélodie aléatoire), saleté qui pulse
+10 division=2 forme=3 mod_decalage=0 mod_etirement=0 mod_brisure=0.3 mod_note=0.6 mod_salete=0.8 accord=4 tube=1 resonance=2
+# 3 : son gelé, regel chaque mesure, hasard doux sur l'étirement
+20 geler=1 regel=1 division=4 forme=2 mod_note=0 mod_salete=0 mod_etirement=0.5 mod_decalage=0.2 tube=0 accord=6 metal=0.6 resonance=8 traine=0.4

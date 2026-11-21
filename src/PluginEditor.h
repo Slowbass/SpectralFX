@@ -5,7 +5,7 @@
 
 // Interface : thème sombre, accent ambre, trois panneaux (Spectre, Résonateur, Sortie).
 // La fenêtre peut être agrandie.
-class SpectralEditor : public juce::AudioProcessorEditor
+class SpectralEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
     explicit SpectralEditor (SpectralProcessor&);
@@ -49,6 +49,11 @@ private:
     };
 
     void paintContent (juce::Graphics&);
+    void timerCallback() override;
+    juce::Component* vitesseKnob = nullptr;
+    juce::Component* divisionKnob = nullptr;
+    juce::Rectangle<int> ledZone;
+    float ledValeur = 0;
 
     SpectralProcessor& processor;
     Content content;
@@ -56,10 +61,10 @@ private:
     std::vector<std::unique_ptr<Switch>> switches;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAtts;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>> buttonAtts;
-    Panel panels[3];
+    Panel panels[4];
 
 public:
-    static constexpr int baseW = 860, baseH = 398;
+    static constexpr int baseW = 860, baseH = 568;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpectralEditor)
 };

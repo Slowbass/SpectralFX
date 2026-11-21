@@ -35,6 +35,7 @@ public:
 
     juce::AudioProcessorValueTreeState& getState() { return state; }
     const std::vector<sfx::ParamDef>& getParamDefs() const { return engine.getParams(); }
+    float valeurMouvement() const { return engine.valeurMouvement(); }
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();

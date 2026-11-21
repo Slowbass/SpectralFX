@@ -78,6 +78,18 @@ void SpectralProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::ScopedNoDenormals noDenormals;
     pushParameters (false);
 
+    // tempo et position de Cubase, pour le mouvement calé sur le tempo
+    double bpm = 120, ppq = 0;
+    bool lecture = false;
+    if (auto* ph = getPlayHead())
+        if (auto pos = ph->getPosition())
+        {
+            if (auto b = pos->getBpm()) bpm = *b;
+            if (auto q = pos->getPpqPosition()) ppq = *q;
+            lecture = pos->getIsPlaying();
+        }
+    engine.setTempo (bpm, lecture, ppq);
+
     const int n = buffer.getNumSamples();
     const int nIn = getTotalNumInputChannels();
     for (int ch = nIn; ch < buffer.getNumChannels(); ++ch) buffer.clear (ch, 0, n);

@@ -15,7 +15,10 @@ et en textures accordées.
 2. **Résonateur sale** (Faust, `dsp/resonateur.dsp`) : 4 résonateurs par canal (boucle à retard
    accordée, passe-tout pour l'effet « métal », filtre de brillance, saturation douce dans la boucle),
    accordés sur une note et un accord, puis saturés.
-3. **Mélange** (C++, `src/Moteur.h`) : son sec retardé de la même latence, mélange, volume.
+3. **Mouvement** (C++, `src/Moteur.h`) : un modulateur lent (libre ou calé sur le tempo de l'hôte ;
+   sinus, triangle, hasard doux, hasard net) qui agit sur Décalage, Étirement, Brisure, Note et Saleté,
+   et peut recapturer le spectre gelé à chaque cycle (Regel).
+4. **Mélange** (C++, `src/Moteur.h`) : son sec retardé de la même latence, mélange, volume.
 
 Pourquoi la partie spectrale est en C++ : Faust ne sait pas faire proprement une FFT avec
 gel et déplacement des fréquences ; une banque de filtres en Faust aurait donné un gel flou.

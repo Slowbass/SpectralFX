@@ -34,6 +34,7 @@
 #endif
 
 #include "Spectre.h"
+#include <atomic>
 #include <cstdio>
 #include <map>
 #include <memory>
@@ -43,7 +44,7 @@
 namespace sfx
 {
 
-enum class Kind { Toggle, Percent, Traine, Hz, Rapport, Note, Accord, Secondes, Db };
+enum class Kind { Toggle, Percent, Traine, Hz, Rapport, Note, Accord, Secondes, Db, Vitesse, Division, Forme, Quantite };
 enum class Cible { Spectre, Faust, Moteur };
 
 struct ParamDef
@@ -63,7 +64,9 @@ enum Index
 {
     pGeler, pTraine, pDecalage, pEtirement, pBrisure, pEpure,
     pNote, pAccord, pTube, pResonance, pBrillance, pMetal, pDerive,
-    pSalete, pPart, pMelange, pSortie, nbParams
+    pSalete, pPart, pMelange, pSortie,
+    pSync, pVitesse, pDivision, pForme, pRegel,
+    pModDecalage, pModEtirement, pModBrisure, pModNote, pModSalete, nbParams
 };
 
 inline std::vector<ParamDef> makeParams()
@@ -86,7 +89,35 @@ inline std::vector<ParamDef> makeParams()
     v[pPart]       = { "part", "Part du r\xc3\xa9sonateur", Kind::Percent, Cible::Faust, "Couleur/Part du r\xc3\xa9sonateur", 0, 1, 0.7f };
     v[pMelange]    = { "melange", "Sec / trait\xc3\xa9", Kind::Percent, Cible::Moteur, "", 0, 1, 0.7f };
     v[pSortie]     = { "sortie", "Volume de sortie", Kind::Db, Cible::Moteur, "", -18, 18, 0 };
+    // Mouvement : un modulateur lent qui fait varier certains réglages tout seul
+    v[pSync]       = { "sync", "Mouvement : cal\xc3\xa9 sur le tempo", Kind::Toggle, Cible::Moteur, "", 0, 1, 1 };
+    v[pVitesse]    = { "vitesse", "Mouvement : vitesse libre", Kind::Vitesse, Cible::Moteur, "", 0.02f, 5.0f, 0.25f, 0, 0.3f };
+    v[pDivision]   = { "division", "Mouvement : dur\xc3\xa9" "e du cycle", Kind::Division, Cible::Moteur, "", 0, 7, 4, 1 };
+    v[pForme]      = { "forme", "Mouvement : forme", Kind::Forme, Cible::Moteur, "", 0, 3, 2, 1 };
+    v[pRegel]      = { "regel", "Mouvement : regel \xc3\xa0 chaque cycle", Kind::Toggle, Cible::Moteur, "", 0, 1, 0 };
+    v[pModDecalage]  = { "mod_decalage", "Mouvement \xe2\x86\x92 D\xc3\xa9" "calage", Kind::Quantite, Cible::Moteur, "", -1, 1, 0 };
+    v[pModEtirement] = { "mod_etirement", "Mouvement \xe2\x86\x92 \xc3\x89tirement", Kind::Quantite, Cible::Moteur, "", -1, 1, 0 };
+    v[pModBrisure]   = { "mod_brisure", "Mouvement \xe2\x86\x92 Brisure", Kind::Quantite, Cible::Moteur, "", -1, 1, 0 };
+    v[pModNote]      = { "mod_note", "Mouvement \xe2\x86\x92 Note", Kind::Quantite, Cible::Moteur, "", -1, 1, 0 };
+    v[pModSalete]    = { "mod_salete", "Mouvement \xe2\x86\x92 Salet\xc3\xa9", Kind::Quantite, Cible::Moteur, "", -1, 1, 0 };
     return v;
+}
+
+// Durées de cycle calées sur le tempo, en temps (noires), mesure à 4 temps
+inline double divisionTemps (int i)
+{
+    static const double d[8] = { 0.25, 0.5, 1, 2, 4, 8, 16, 32 };
+    return d[std::clamp (i, 0, 7)];
+}
+inline const char* nomDivision (int i)
+{
+    static const char* n[8] = { "1/16", "1/8", "1/4", "1/2", "1 mesure", "2 mesures", "4 mesures", "8 mesures" };
+    return n[std::clamp (i, 0, 7)];
+}
+inline const char* nomForme (int i)
+{
+    static const char* n[4] = { "Sinus", "Triangle", "Hasard doux", "Hasard net" };
+    return n[std::clamp (i, 0, 3)];
 }
 
 inline const char* nomAccord (int i)
@@ -126,6 +157,10 @@ inline std::string formatValue (Kind k, float v)
         case Kind::Accord:   return nomAccord ((int) std::lround (v));
         case Kind::Secondes: return v < 1 ? fmt ("%.2f s", v) : fmt ("%.1f s", v);
         case Kind::Db:       return fmt ("%+.1f dB", v);
+        case Kind::Vitesse:  return v < 1 ? fmt ("%.2f Hz", v) : fmt ("%.1f Hz", v);
+        case Kind::Division: return nomDivision ((int) std::lround (v));
+        case Kind::Forme:    return nomForme ((int) std::lround (v));
+        case Kind::Quantite: return std::abs (v) < 0.005f ? "0" : fmt ("%+.0f %%", v * 100.0);
     }
     return {};
 }
@@ -198,7 +233,20 @@ public:
         melLisse = values[pMelange];
         gainLisse = dbToGain (values[pSortie]);
         lisseCoef = (float) std::exp (-1.0 / (0.02 * sampleRate));
+        sr = sampleRate;
+        phaseLibre = 0; cycle = -1; hasardPrec = 0; hasardSuiv = 0;
     }
+
+    // Tempo de l'hôte (appelé avant chaque bloc). ppq = position en temps si la lecture tourne.
+    void setTempo (double bpm, bool lecture, double ppq)
+    {
+        tempo = bpm > 1 ? bpm : 120;
+        enLecture = lecture;
+        ppqDebut = ppq;
+    }
+
+    // Valeur actuelle du modulateur (-1..1), pour l'affichage
+    float valeurMouvement() const { return lfoAffiche.load(); }
 
     int latency() const { return lat; }
 
@@ -213,13 +261,6 @@ public:
     void process (float* left, float* right, int n)
     {
         if (sec[0].empty()) return;   // pas encore préparé
-        SpectreReglages s;
-        s.geler = values[pGeler] > 0.5f;
-        s.traine = values[pTraine];
-        s.decalage = values[pDecalage];
-        s.etirement = values[pEtirement];
-        s.brisure = values[pBrisure];
-        s.epure = values[pEpure];
         const float melCible = values[pMelange];
         const float gainCible = dbToGain (values[pSortie]);
 
@@ -227,6 +268,8 @@ public:
         while (pos < n)
         {
             const int k = std::min (chunk, n - pos);
+            const float m = avancerMouvement (pos, k);
+            SpectreReglages s = reglagesModules (m);
             float* io[2] = { left + pos, right + pos };
             for (int c = 0; c < 2; ++c)
                 for (int i = 0; i < k; ++i)
@@ -240,6 +283,10 @@ public:
             secPos = (secPos + k) % lat;
 
             FAUSTFLOAT* in[2] = { spec[0].data(), spec[1].data() };
+            if (zones[pNote])
+                *zones[pNote] = (FAUSTFLOAT) std::clamp (values[pNote] + (float) std::lround (values[pModNote] * m * 12.0f), 12.0f, 96.0f);
+            if (zones[pSalete])
+                *zones[pSalete] = (FAUSTFLOAT) std::clamp (values[pSalete] + values[pModSalete] * m * 0.6f, 0.0f, 1.0f);
             FAUSTFLOAT* out[2] = { wet[0].data(), wet[1].data() };
             dsp->compute (k, in, out);
 
@@ -264,6 +311,77 @@ public:
     }
 
 private:
+    // Fait avancer le modulateur sur un morceau de k échantillons ; renvoie sa valeur (-1..1)
+    float avancerMouvement (int pos, int k)
+    {
+        const bool sync = values[pSync] > 0.5f;
+        double phase;   // en cycles
+        if (sync)
+        {
+            const double cycleTemps = divisionTemps ((int) std::lround (values[pDivision]));
+            const double tempsParEch = tempo / 60.0 / sr;
+            if (enLecture)
+                phase = (ppqDebut + (pos + 0.5 * k) * tempsParEch) / cycleTemps;
+            else
+            {
+                phaseLibre += k * tempsParEch / cycleTemps;
+                phase = phaseLibre;
+            }
+        }
+        else
+        {
+            phaseLibre += k * values[pVitesse] / sr;
+            phase = phaseLibre;
+        }
+        if (phaseLibre > 1.0e6) phaseLibre -= 1.0e6;
+
+        const long long c = (long long) std::floor (phase);
+        const double f = phase - (double) c;
+        if (c != cycle)
+        {
+            if (cycle >= 0 || ! sync || ! enLecture) regelEnAttente = true;
+            hasardPrec = (c == cycle + 1) ? hasardSuiv : alea();
+            hasardSuiv = alea();
+            cycle = c;
+        }
+        float v = 0;
+        switch ((int) std::lround (values[pForme]))
+        {
+            case 0:  v = (float) std::sin (twoPi * f); break;
+            case 1:  v = (float) (f < 0.5 ? 4 * f - 1 : 3 - 4 * f); break;
+            case 2:  { const double t = 0.5 - 0.5 * std::cos (3.14159265358979 * f); v = (float) (hasardPrec + (hasardSuiv - hasardPrec) * t); break; }
+            default: v = (float) hasardPrec; break;
+        }
+        lfoAffiche.store (v);
+        return v;
+    }
+
+    SpectreReglages reglagesModules (float m)
+    {
+        SpectreReglages s;
+        s.geler = values[pGeler] > 0.5f;
+        s.traine = values[pTraine];
+        s.decalage = std::clamp (values[pDecalage] + values[pModDecalage] * m * 600.0f, -1500.0f, 1500.0f);
+        s.etirement = std::clamp (values[pEtirement] * std::pow (2.0f, values[pModEtirement] * m * 0.75f), 0.35f, 2.8f);
+        s.brisure = std::clamp (values[pBrisure] + values[pModBrisure] * m * 0.7f, 0.0f, 1.0f);
+        s.epure = values[pEpure];
+        s.regel = regelEnAttente && values[pRegel] > 0.5f;
+        regelEnAttente = false;
+        return s;
+    }
+
+    double alea()
+    {
+        graine ^= graine << 13; graine ^= graine >> 17; graine ^= graine << 5;
+        return (double) (graine & 0xffffff) / (double) 0x800000 - 1.0;
+    }
+
+    double sr = 48000, tempo = 120, ppqDebut = 0, phaseLibre = 0, hasardPrec = 0, hasardSuiv = 0;
+    bool enLecture = false, regelEnAttente = false;
+    long long cycle = -1;
+    uint32_t graine = 0x9e3779b9u;
+    std::atomic<float> lfoAffiche { 0.0f };
+
     static float dbToGain (float db) { return std::pow (10.0f, db / 20.0f); }
 
     std::vector<ParamDef> params;

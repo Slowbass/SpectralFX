@@ -41,6 +41,19 @@ SORTIE
 - Sec / traité : mélange avec le son d'origine.
 - Volume : volume de sortie.
 
+MOUVEMENT (le son évolue tout seul, sans automatisation)
+- Rythme : Tempo (calé sur le tempo de Cubase) ou Libre (vitesse en Hz).
+- Durée (en mode Tempo) : durée d'un cycle, de 1/16 à 8 mesures.
+  Vitesse (en mode Libre) : de 0,02 Hz (un cycle en 50 s) à 5 Hz.
+- Forme : Sinus et Triangle (va-et-vient régulier), Hasard doux
+  (glisse vers une nouvelle valeur au hasard), Hasard net (saute à
+  chaque cycle : idéal pour des notes aléatoires en rythme).
+- Regel : quand Geler est actif, le spectre est recapturé à chaque cycle.
+- Les cinq boutons "→" règlent combien le mouvement agit sur Décalage
+  (jusqu'à ±600 Hz), Étirement, Brisure, Note (jusqu'à ±12 demi-tons)
+  et Saleté. Au centre : pas d'effet. À gauche : effet inversé.
+- Le curseur à côté du titre MOUVEMENT montre le modulateur en direct.
+
 Double-clic sur un bouton : retour à sa position par défaut.
 Toutes les commandes sont automatisables dans Cubase.
 

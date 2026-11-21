@@ -158,11 +158,38 @@ SpectralEditor::SpectralEditor (SpectralProcessor& p)
         addKnob (sfx::pPart, "R\xc3\xa9sonateur", false),
         addKnob (sfx::pMelange, "Sec / trait\xc3\xa9", false),
         addKnob (sfx::pSortie, "Volume", true) }, 2 };
+    divisionKnob = addKnob (sfx::pDivision, "Dur\xc3\xa9" "e", false);
+    vitesseKnob = addKnob (sfx::pVitesse, "Vitesse", false);
+    panels[3] = { u ("MOUVEMENT"), {}, {
+        addSwitch (sfx::pSync, "Rythme", "Tempo", "Libre", false),
+        divisionKnob,
+        addKnob (sfx::pForme, "Forme", false),
+        addSwitch (sfx::pRegel, "Regel", "Oui", "Non", false),
+        addKnob (sfx::pModDecalage, "\xe2\x86\x92 D\xc3\xa9" "calage", true),
+        addKnob (sfx::pModEtirement, "\xe2\x86\x92 \xc3\x89tirement", true),
+        addKnob (sfx::pModBrisure, "\xe2\x86\x92 Brisure", true),
+        addKnob (sfx::pModNote, "\xe2\x86\x92 Note", true),
+        addKnob (sfx::pModSalete, "\xe2\x86\x92 Salet\xc3\xa9", true) }, 9 };
 
     setResizable (true, true);
     setResizeLimits (baseW * 7 / 10, baseH * 7 / 10, baseW * 2, baseH * 2);
     getConstrainer()->setFixedAspectRatio ((double) baseW / baseH);
     setSize (baseW, baseH);
+    timerCallback();
+    startTimerHz (25);
+}
+
+void SpectralEditor::timerCallback()
+{
+    const bool sync = processor.getState().getRawParameterValue ("sync")->load() > 0.5f;
+    divisionKnob->setVisible (sync);
+    vitesseKnob->setVisible (! sync);
+    const float v = processor.valeurMouvement();
+    if (std::abs (v - ledValeur) > 0.01f)
+    {
+        ledValeur = v;
+        content.repaint (ledZone);
+    }
 }
 
 SpectralEditor::~SpectralEditor() = default;
@@ -197,6 +224,11 @@ void SpectralEditor::resized()
     // centrer les 2 colonnes de la sortie
     const int off = (panels[2].bounds.getWidth() - 2 * cellW - 2 * pad) / 2;
     for (auto* c : panels[2].items) c->setTopLeftPosition (c->getX() + off, c->getY());
+
+    place (panels[3], margin, headerH + 2 * (rowH + gap), 9);
+    panels[3].bounds.setWidth (baseW - 2 * margin);
+    vitesseKnob->setBounds (divisionKnob->getBounds());
+    ledZone = { panels[3].bounds.getX() + 120, panels[3].bounds.getY() + 6, 160, 16 };
 }
 
 void SpectralEditor::paintContent (juce::Graphics& g)
@@ -221,5 +253,15 @@ void SpectralEditor::paintContent (juce::Graphics& g)
         g.setColour (track);
         g.drawLine ((float) p.bounds.getX() + 12, (float) p.bounds.getY() + 24,
                     (float) p.bounds.getRight() - 12, (float) p.bounds.getY() + 24, 1.0f);
+    }
+
+    // témoin du mouvement : un curseur qui va et vient
+    {
+        auto z = ledZone.toFloat().reduced (0, 4);
+        g.setColour (track);
+        g.fillRoundedRectangle (z, 4.0f);
+        const float x = z.getCentreX() + ledValeur * (z.getWidth() / 2 - 5);
+        g.setColour (accent);
+        g.fillEllipse (juce::Rectangle<float> (10, 10).withCentre ({ x, z.getCentreY() }));
     }
 }
