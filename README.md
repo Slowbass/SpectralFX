@@ -6,6 +6,8 @@ et en textures accordées.
 
 ![Interface](docs/interface.png)
 
+**Mode d’emploi : voir [NOTICE.md](NOTICE.md).**
+
 ## Trajet du son
 
 1. **Spectre brisé** (C++, `src/Spectre.h`) : le son est découpé en tranches qui se chevauchent

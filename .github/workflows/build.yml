@@ -80,6 +80,7 @@ jobs:
           Copy-Item -Recurse "build/SpectralFX_artefacts/Release/VST3/SpectralFX.vst3" dist/
           Copy-Item "build/SpectralFX_artefacts/Release/Standalone/SpectralFX.exe" dist/
           Copy-Item "INSTALLATION.txt" dist/
+          Copy-Item "NOTICE.md" dist/
 
       - uses: actions/upload-artifact@v7
         with:
